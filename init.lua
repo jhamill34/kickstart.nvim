@@ -84,6 +84,9 @@ I hope you enjoy your Neovim journey,
 P.S. You can delete this when you're done too. It's your config now! :)
 --]]
 
+vim.g.loaded_perl_provider = 0
+vim.g.python3_host_prog = '/Users/joshuahamill/.pyenv/versions/3.12.6/envs/venv/bin/python'
+
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
@@ -91,7 +94,9 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
+
+vim.g.ftplugin_sql_omni_key = '<C-j>'
 
 -- [[ Setting options ]]
 -- See `:help vim.opt`
@@ -140,7 +145,7 @@ vim.opt.timeoutlen = 300
 
 -- Configure how new splits should be opened
 vim.opt.splitright = true
-vim.opt.splitbelow = true
+vim.opt.splitbelow = false
 
 -- Sets how neovim will display certain whitespace characters in the editor.
 --  See `:help 'list'`
@@ -162,6 +167,8 @@ vim.opt.scrolloff = 10
 
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
+vim.opt.hlsearch = true
+vim.keymap.set('i', '<C-c>', '<Esc>')
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Diagnostic keymaps
@@ -606,17 +613,28 @@ require('lazy').setup({
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
         -- clangd = {},
-        -- gopls = {},
-        -- pyright = {},
-        -- rust_analyzer = {},
+        pyright = {},
+        rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
-        -- ts_ls = {},
-        --
+        ts_ls = {},
+
+        gopls = {
+          settings = {
+            gopls = {
+              buildFlags = { '-tags=wireinject' },
+              standaloneTags = {
+                'ignore',
+                'wireinject',
+                '!wireinject',
+              },
+            },
+          },
+        },
 
         lua_ls = {
           -- cmd = {...},
@@ -699,11 +717,11 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
-        -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
-        --
-        -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        javascript = { 'eslint_d', 'prettier' },
+        javascriptreact = { 'eslint_d', 'prettier' },
+        typescript = { 'eslint_d', 'prettier' },
+        typescriptreact = { 'eslint_d', 'prettier' },
+        go = { 'gofmt', 'goimports', 'golines', 'gofumpt' },
       },
     },
   },
@@ -823,7 +841,6 @@ require('lazy').setup({
       }
     end,
   },
-
   { -- You can easily change to a different colorscheme.
     -- Change the name of the colorscheme plugin below, and then
     -- change the command in the config to whatever the name of that colorscheme is.
@@ -906,6 +923,134 @@ require('lazy').setup({
     --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+  },
+  {
+    'tpope/vim-fugitive',
+    config = function()
+      vim.keymap.set('n', '<leader>gs', vim.cmd.Git)
+    end,
+  },
+  {
+    'theprimeagen/harpoon',
+    config = function()
+      local mark = require 'harpoon.mark'
+      local ui = require 'harpoon.ui'
+
+      vim.keymap.set('n', '<leader>a', mark.add_file)
+      vim.keymap.set('n', '<C-e>', ui.toggle_quick_menu)
+
+      vim.keymap.set('n', '<leader>j', function()
+        ui.nav_file(1)
+      end)
+      vim.keymap.set('n', '<leader>k', function()
+        ui.nav_file(2)
+      end)
+      vim.keymap.set('n', '<leader>l', function()
+        ui.nav_file(3)
+      end)
+      vim.keymap.set('n', '<leader>;', function()
+        ui.nav_file(4)
+      end)
+    end,
+  },
+  {
+    'mbbill/undotree',
+    config = function()
+      vim.keymap.set('n', '<leader>u', vim.cmd.UndotreeToggle)
+    end,
+  },
+  { 'lewis6991/gitsigns.nvim' },
+  { 'simrat39/symbols-outline.nvim' },
+  -- { 'github/copilot.vim' },
+  {
+    'alexghergh/nvim-tmux-navigation',
+    config = function()
+      require('nvim-tmux-navigation').setup {
+        disable_when_zoomed = true, -- defaults to false
+        keybindings = {
+          left = '<C-h>',
+          down = '<C-j>',
+          up = '<C-k>',
+          right = '<C-l>',
+          last_active = '<C-\\>',
+          next = '<C-Space>',
+        },
+      }
+    end,
+  },
+  { 'mfussenegger/nvim-jdtls' },
+  {
+    'nvim-neo-tree/neo-tree.nvim',
+    version = '*',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-tree/nvim-web-devicons', -- not strictly required, but recommended
+      'MunifTanjim/nui.nvim',
+    },
+    config = function()
+      require('neo-tree').setup {}
+
+      vim.keymap.set('n', '<C-n>', ':Neotree toggle<CR>')
+    end,
+  },
+  {
+    'junegunn/goyo.vim',
+    config = function()
+      vim.g.goyo_width = 120
+
+      vim.keymap.set('n', '<leader>z', ':Goyo<CR>')
+    end,
+  },
+  { 'tpope/vim-dadbod' },
+  { 'kristijanhusak/vim-dadbod-completion' },
+  { 'kristijanhusak/vim-dadbod-ui' },
+  {
+    'stevearc/oil.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    config = function()
+      require('oil').setup {
+        columns = { 'icon' },
+        keymaps = {
+          ['<C-h>'] = false,
+          ['<M-h>'] = 'actions.select_split',
+          view_options = {
+            show_hidden = true,
+          },
+        },
+      }
+      vim.keymap.set('n', '-', ':Oil<CR>', { desc = 'Open parent directory' })
+      vim.keymap.set('n', '<leader>-', require('oil').toggle_float)
+    end,
+  },
+  { 'tpope/vim-dotenv' },
+  {
+    'vhyrro/luarocks.nvim',
+    priority = 1000,
+    config = true,
+    opts = {
+      rocks = { 'lua-curl', 'nvim-nio', 'mimetypes', 'xml2lua' },
+    },
+  },
+  {
+    'rest-nvim/rest.nvim',
+    ft = 'http',
+    dependencies = { 'luarocks.nvim' },
+    config = function()
+      require('rest-nvim').setup {
+        env_file = '.env',
+        env_pattern = '\\.env$',
+        env_edit_command = 'tabedit',
+        keybinds = {
+          {
+            '<leader>rr',
+            '<cmd>Rest run<cr>',
+            'Run request under cursor',
+          },
+        },
+      }
+
+      vim.keymap.set('n', '<leader>se', require('telescope').extensions.rest.select_env, { desc = '[S]elect [E]nvironment file' })
+    end,
   },
 
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
